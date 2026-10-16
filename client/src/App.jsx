@@ -1,7 +1,8 @@
-import { Navigate, NavLink, Route, Routes } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom';
 import { useApp } from './AppContext.jsx';
 import { fmtClock } from './lib/time.js';
-import { LogoMark } from './components/Icons.jsx';
+import { LogoMark, TabIcon } from './components/Icons.jsx';
 import ThemeToggle from './components/ThemeToggle.jsx';
 import Auth from './pages/Auth.jsx';
 import Home from './pages/Home.jsx';
@@ -30,6 +31,45 @@ function LivePill() {
   );
 }
 
+const TABS = [['/', 'Home', 'home'], ['/tracker', 'Tracker', 'tracker'], ['/timer', 'Timer', 'timer'], ['/planner', 'Planner', 'planner']];
+const MORE = [['/reminders', 'Reminders', 'reminders'], ['/world-clock', 'World Clock', 'clock'], ['/analyst', 'AI Analyst', 'analyst']];
+
+/** Bottom tab bar shown on phones instead of the top menu. */
+function BottomNav() {
+  const { user, logout } = useApp();
+  const { pathname } = useLocation();
+  const [open, setOpen] = useState(false);
+  useEffect(() => setOpen(false), [pathname]);
+  const moreActive = MORE.some(([to]) => pathname.startsWith(to));
+  return (
+    <>
+      <nav className="tabbar" aria-label="Main">
+        {TABS.map(([to, label, icon]) => (
+          <NavLink key={to} to={to} end={to === '/'} className="tab"><TabIcon name={icon} /><span>{label}</span></NavLink>
+        ))}
+        <button className={`tab ${moreActive || open ? 'active' : ''}`} onClick={() => setOpen(o => !o)} aria-expanded={open}>
+          <TabIcon name="more" /><span>More</span>
+        </button>
+      </nav>
+      {open && (
+        <div className="sheet-backdrop" onClick={() => setOpen(false)}>
+          <div className="sheet" onClick={e => e.stopPropagation()}>
+            <div className="sheet-handle" />
+            {MORE.map(([to, label, icon]) => (
+              <NavLink key={to} to={to} className="sheet-item"><TabIcon name={icon} /><span>{label}</span></NavLink>
+            ))}
+            <div className="sheet-user">
+              <span className="avatar">{user.username[0].toUpperCase()}</span>
+              <div><b>{user.username}</b><div className="muted small break">{user.email}</div></div>
+              <button className="btn small ghost" onClick={logout}>Log out</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 function RingOverlay() {
   const { timer, categories, dismissAlarm } = useApp();
   if (timer.status !== 'ringing' && timer.status !== 'snoozed') return null;
@@ -55,8 +95,20 @@ function RingOverlay() {
 }
 
 export default function App() {
-  const { user, booting, logout } = useApp();
+  const { user, booting, bootError, retryBoot, logout } = useApp();
   if (booting) return <div className="boot"><LogoMark size={56} /></div>;
+  if (!user && bootError) {
+    return (
+      <div className="boot">
+        <div className="boot-msg">
+          <LogoMark size={48} />
+          <h2>Can't reach Chronos right now</h2>
+          <p className="muted">You're still signed in. Check your internet connection, or wait a minute if the app is updating.</p>
+          <button className="btn primary big" onClick={retryBoot}>Try again</button>
+        </div>
+      </div>
+    );
+  }
   if (!user) return <Auth />;
 
   return (
@@ -70,7 +122,7 @@ export default function App() {
           <div className="topbar-right">
             <LivePill />
             <ThemeToggle />
-            <div className="user-chip" title={user.mobile}>
+            <div className="user-chip" title={user.email}>
               <span className="avatar">{user.username[0].toUpperCase()}</span>
               <button className="link" onClick={logout}>Log out</button>
             </div>
@@ -89,6 +141,7 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </main>
+      <BottomNav />
       <RingOverlay />
     </div>
   );

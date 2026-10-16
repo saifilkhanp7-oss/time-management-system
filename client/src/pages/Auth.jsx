@@ -8,9 +8,8 @@ export default function Auth() {
   const { login } = useApp();
   const [mode, setMode] = useState('login');
   const [step, setStep] = useState('details'); // details | otp
-  const [username, setUsername] = useState('');
-  const [cc, setCc] = useState('+91');
-  const [phone, setPhone] = useState('');
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState(() => { try { return localStorage.getItem('chronos_last_email') || ''; } catch { return ''; } });
   const [otp, setOtp] = useState('');
   const [devOtp, setDevOtp] = useState(null);
   const [error, setError] = useState('');
@@ -18,7 +17,7 @@ export default function Auth() {
   const [cooldown, setCooldown] = useState(0);
   const otpRef = useRef(null);
 
-  const mobile = `${cc.trim()}${phone.replace(/\D/g, '')}`;
+  const cleanEmail = email.trim().toLowerCase();
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -32,7 +31,7 @@ export default function Auth() {
     e?.preventDefault();
     setError(''); setBusy(true);
     try {
-      const r = await api('/auth/request-otp', { method: 'POST', body: { mode, mobile, username: username.trim() } });
+      const r = await api('/auth/request-otp', { method: 'POST', body: { mode, email: cleanEmail, name: name.trim() } });
       setDevOtp(r.devOtp || null);
       setStep('otp'); setCooldown(30); setOtp('');
       setTimeout(() => otpRef.current?.focus(), 50);
@@ -43,7 +42,8 @@ export default function Auth() {
     e.preventDefault();
     setError(''); setBusy(true);
     try {
-      const r = await api('/auth/verify-otp', { method: 'POST', body: { mobile, code: otp } });
+      const r = await api('/auth/verify-otp', { method: 'POST', body: { email: cleanEmail, code: otp } });
+      try { localStorage.setItem('chronos_last_email', cleanEmail); } catch { /* ignore */ }
       login(r.token, r.user);
     } catch (err) { setError(err.message); } finally { setBusy(false); }
   }
@@ -70,27 +70,26 @@ export default function Auth() {
 
         {step === 'details' ? (
           <form onSubmit={requestOtp} className="stack">
-            <p className="muted">{mode === 'login' ? 'Already have an account? Enter your mobile number and we will text you a code.' : 'New here? Pick a username and verify your mobile number so your data is safely stored.'}</p>
+            <p className="muted">{mode === 'login' ? 'Welcome back. Enter your email and we will send you a 6-digit code.' : 'New here? Enter your name and email. We will send a code to confirm it is you.'}</p>
             {mode === 'signup' && (
               <label className="field">
-                <span>Username</span>
-                <input value={username} onChange={e => setUsername(e.target.value)} placeholder="e.g. saif_k" autoComplete="username" required minLength={3} maxLength={24} pattern="[A-Za-z0-9_.]+" title="Letters, numbers, _ or ." />
+                <span>Name</span>
+                <input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Saif Khan" autoComplete="name" required minLength={2} maxLength={40} />
               </label>
             )}
             <label className="field">
-              <span>Mobile number</span>
-              <div className="phone">
-                <input className="cc" value={cc} onChange={e => setCc(e.target.value)} aria-label="Country code" />
-                <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="98765 43210" inputMode="tel" autoComplete="tel-national" required />
-              </div>
+              <span>Email</span>
+              <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@gmail.com" autoComplete="email" inputMode="email" autoCapitalize="none" spellCheck={false} required />
             </label>
             {error && <div className="alert error">{error}</div>}
-            <button className="btn primary big" disabled={busy}>{busy ? 'Sending…' : 'Send OTP'}</button>
+            <button className="btn primary big" disabled={busy}>{busy ? 'Sending…' : 'Send code'}</button>
           </form>
         ) : (
           <form onSubmit={verify} className="stack">
-            <p className="muted">Enter the 6-digit code sent to <b>{mobile}</b>. <button type="button" className="link" onClick={() => setStep('details')}>Change</button></p>
-            {devOtp && <div className="alert info">Dev mode (no SMS provider configured): your code is <b className="mono">{devOtp}</b></div>}
+            <p className="muted">We sent a 6-digit code to <b className="break">{cleanEmail}</b>. <button type="button" className="link" onClick={() => setStep('details')}>Change</button></p>
+            {devOtp
+              ? <div className="alert info">Demo mode (email sending not set up yet): your code is <b className="mono">{devOtp}</b></div>
+              : <p className="muted small">Check your inbox. If it isn't there within a minute, look in Spam or Promotions.</p>}
             <input ref={otpRef} className="otp-input mono" value={otp} onChange={e => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))} inputMode="numeric" autoComplete="one-time-code" placeholder="••••••" required minLength={6} />
             {error && <div className="alert error">{error}</div>}
             <button className="btn primary big" disabled={busy || otp.length !== 6}>{busy ? 'Verifying…' : mode === 'login' ? 'Verify & log in' : 'Verify & create account'}</button>

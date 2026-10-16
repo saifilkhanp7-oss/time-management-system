@@ -37,10 +37,18 @@ export function AppProvider({ children }) {
   /* ---------- auth ---------- */
   const [user, setUser] = useState(null);
   const [booting, setBooting] = useState(true);
-  useEffect(() => {
+  const [bootError, setBootError] = useState(null);
+  const loadMe = useCallback(() => {
     if (!getToken()) { setBooting(false); return; }
-    api('/auth/me').then(d => setUser(d.user)).catch(() => setToken(null)).finally(() => setBooting(false));
+    setBooting(true); setBootError(null);
+    // Stay logged in: renew the saved token each time the app opens.
+    // Only a rejected token logs the user out; if the server can't be reached we keep the login and offer a retry.
+    api('/auth/me')
+      .then(d => { if (d.token) setToken(d.token); setUser(d.user); })
+      .catch(e => { if (getToken()) setBootError(e.message || 'Could not reach the server.'); })
+      .finally(() => setBooting(false));
   }, []);
+  useEffect(() => { loadMe(); }, [loadMe]);
   useEffect(() => {
     const onLogout = () => setUser(null);
     window.addEventListener('chronos:logout', onLogout);
@@ -220,7 +228,7 @@ export function AppProvider({ children }) {
 
   const value = {
     theme, toggleTheme, toast, confirm,
-    user, booting, login, logout,
+    user, booting, bootError, retryBoot: loadMe, login, logout,
     categories, refreshCategories, dataVersion, bump,
     live, refreshLive, startTracking, stopTracking, now,
     timer, timerRemaining, configureTimer, startTimer, pauseTimer, resumeTimer, stopTimer, dismissAlarm,

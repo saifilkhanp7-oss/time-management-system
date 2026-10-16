@@ -191,13 +191,6 @@ export default function Analyst() {
           {showRange && <RangeView s={s} />}
         </div>
       </div>
-
-      {s && (
-        <details className="card raw">
-          <summary>Structured features sent to the AI</summary>
-          <pre className="mono small">{JSON.stringify((({ timeline, ...rest }) => rest)(s), null, 2)}</pre>
-        </details>
-      )}
     </div>
   );
 }

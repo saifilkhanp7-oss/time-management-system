@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { useApp } from '../AppContext.jsx';
 import { api } from '../lib/api.js';
 import { MONTHS, WEEKDAYS, fmtDateShort, fmtMin, monthGrid, todayStr } from '../lib/time.js';
+import useIsMobile from '../lib/useIsMobile.js';
+import MonthPager from './MonthPager.jsx';
 
 const YEARS = [2020, 2021, 2022, 2023, 2024, 2025, 2026];
 
@@ -12,6 +14,9 @@ export default function YearCalendar({ onPickDate }) {
   const [days, setDays] = useState({});
   const [hover, setHover] = useState(null);
   const today = todayStr();
+  const isMobile = useIsMobile();
+  const [month, setMonth] = useState(new Date().getMonth());
+  const pickYear = y => { setYear(y); setMonth(y === +today.slice(0, 4) ? +today.slice(5, 7) - 1 : 11); };
 
   useEffect(() => { api(`/stats/daily?from=${year}-01-01&to=${year}-12-31`).then(d => setDays(d.days)).catch(() => {}); }, [year, dataVersion]);
 
@@ -43,17 +48,18 @@ export default function YearCalendar({ onPickDate }) {
             {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
           <div className="year-tabs" role="tablist">
-            {YEARS.map(y => <button key={y} className={y === year ? 'on' : ''} onClick={() => setYear(y)}>{y}</button>)}
+            {YEARS.map(y => <button key={y} className={y === year ? 'on' : ''} onClick={() => pickYear(y)}>{y}</button>)}
           </div>
         </div>
       </div>
 
       <div className="hover-line">
-        {hover ? <><b>{fmtDateShort(hover)} {year}</b> · {fmtMin(minutesOn(hover))}{cat ? ` of ${cat.name}` : ' tracked'}</> : <span className="muted small">Hover a day to see the time invested. Click it to see that day's sessions.</span>}
+        {hover ? <><b>{fmtDateShort(hover)} {year}</b> · {fmtMin(minutesOn(hover))}{cat ? ` of ${cat.name}` : ' tracked'}</> : <span className="muted small">{isMobile ? 'Tap a day to see the time invested.' : "Hover a day to see the time invested. Click it to see that day's sessions."}</span>}
       </div>
 
-      <div className="months" style={{ '--heat': color }}>
-        {MONTHS.map((name, mi) => (
+      {isMobile && <MonthPager month={month} setMonth={setMonth} year={year} />}
+      <div className={`months ${isMobile ? 'single' : ''}`} style={{ '--heat': color }}>
+        {MONTHS.map((name, mi) => (isMobile && mi !== month) ? null : (
           <div key={name} className="month">
             <div className="month-name">{name}</div>
             <div className="month-grid">
@@ -64,7 +70,7 @@ export default function YearCalendar({ onPickDate }) {
                   className={`day lv${level(minutesOn(d))} ${d === today ? 'today' : ''} ${d > today ? 'future' : ''}`}
                   onMouseEnter={() => setHover(d)}
                   onFocus={() => setHover(d)}
-                  onClick={() => d <= today && onPickDate?.(d)}
+                  onClick={() => { setHover(d); if (!isMobile && d <= today) onPickDate?.(d); }}
                   title={`${d}: ${fmtMin(minutesOn(d))}`}
                 >{+d.slice(8)}</button>
               ) : <span key={`e${i}`} />)}

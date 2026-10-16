@@ -3,10 +3,12 @@ import { Bar, BarChart, CartesianGrid, ReferenceLine, ResponsiveContainer, Toolt
 import { useApp } from '../AppContext.jsx';
 import { api } from '../lib/api.js';
 import { addDays, fmtDateShort, fmtMin, mondayOf, parseDate, todayStr } from '../lib/time.js';
+import useIsMobile from '../lib/useIsMobile.js';
 
 export default function WeekChart() {
   const { categories, dataVersion } = useApp();
   const [catId, setCatId] = useState(null);
+  const isMobile = useIsMobile();
   const [week, setWeek] = useState(mondayOf(todayStr()));
   const [days, setDays] = useState({});
   const busiest = [...categories].sort((a, b) => (a.grp === 'rest') - (b.grp === 'rest') || b.today_min - a.today_min)[0];
@@ -19,7 +21,7 @@ export default function WeekChart() {
   const data = Array.from({ length: 7 }, (_, i) => {
     const d = addDays(week, i);
     const min = days[d]?.[cat.id] || 0;
-    return { label: parseDate(d).toLocaleDateString([], { weekday: 'short' }) + ' ' + parseDate(d).getDate(), hours: +(min / 60).toFixed(2), min, met: cat.daily_goal_min && min >= cat.daily_goal_min };
+    return { label: isMobile ? parseDate(d).toLocaleDateString([], { weekday: 'narrow' }) + parseDate(d).getDate() : parseDate(d).toLocaleDateString([], { weekday: 'short' }) + ' ' + parseDate(d).getDate(), hours: +(min / 60).toFixed(2), min, met: cat.daily_goal_min && min >= cat.daily_goal_min };
   });
   const total = data.reduce((t, d) => t + d.min, 0);
   const isCurrent = week === mondayOf(todayStr());
@@ -39,7 +41,7 @@ export default function WeekChart() {
           <button className="btn small ghost" disabled={isCurrent} onClick={() => setWeek(addDays(week, 7))}>Next ›</button>
         </div>
       </div>
-      <ResponsiveContainer width="100%" height={260}>
+      <ResponsiveContainer width="100%" height={isMobile ? 220 : 260}>
         <BarChart data={data} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
           <CartesianGrid vertical={false} stroke="var(--line)" />
           <XAxis dataKey="label" tick={{ fill: 'var(--muted)', fontSize: 12 }} axisLine={false} tickLine={false} />

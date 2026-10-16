@@ -6,6 +6,7 @@ import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { authRouter } from './auth.js';
 import { api } from './api.js';
+import { emailMode } from './mailer.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 if (process.env.NODE_ENV === 'production' && (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 24)) {
@@ -38,10 +39,11 @@ app.use((err, req, res, _next) => {
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
   console.log(`Chronos API running on http://localhost:${PORT}`);
-  if (!process.env.TWILIO_ACCOUNT_SID) {
-    console.log(process.env.OTP_DEMO_MODE === 'true'
-      ? '  • SMS: DEMO MODE — OTPs are shown on screen. Anyone can log in to any account. Do not use for real data.'
-      : '  • SMS: not configured (OTPs are printed here)');
-  }
+  const mail = emailMode();
+  if (mail === 'apps-script') console.log('  • Email codes: sent through your Gmail (Apps Script)');
+  else if (mail === 'smtp') console.log(`  • Email codes: sent from ${process.env.GMAIL_USER} (Gmail SMTP)`);
+  else console.log(process.env.OTP_DEMO_MODE === 'true'
+    ? '  • Email codes: DEMO MODE — codes are shown on screen. Anyone can log in to any account.'
+    : '  • Email codes: not configured (codes are printed here)');
   if (!process.env.ANTHROPIC_API_KEY) console.log('  • AI analyst: built-in rule-based insights (set ANTHROPIC_API_KEY to use Claude)');
 });

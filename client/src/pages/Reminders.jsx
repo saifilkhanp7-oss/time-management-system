@@ -3,6 +3,8 @@ import { useApp } from '../AppContext.jsx';
 import { api } from '../lib/api.js';
 import { MONTHS, WEEKDAYS, addDays, fmtDateLong, fmtDateShort, monthGrid, todayStr } from '../lib/time.js';
 import { TrashIcon } from '../components/Icons.jsx';
+import useIsMobile from '../lib/useIsMobile.js';
+import MonthPager from '../components/MonthPager.jsx';
 
 export default function Reminders() {
   const { confirm, toast, bump } = useApp();
@@ -12,6 +14,8 @@ export default function Reminders() {
   const today = todayStr();
   const year = +today.slice(0, 4);
   const tomorrow = addDays(today, 1);
+  const isMobile = useIsMobile();
+  const [month, setMonth] = useState(+today.slice(5, 7) - 1);
 
   useEffect(() => { api('/reminders').then(d => setReminders(d.reminders)).catch(e => toast(e.message, 'error')); }, [toast]);
 
@@ -45,8 +49,9 @@ export default function Reminders() {
       <div className="reminder-layout">
         <div className="card">
           <div className="card-head"><h3>{year}</h3><span className="muted small">Past days and today are locked</span></div>
-          <div className="months compact">
-            {MONTHS.map((name, mi) => (
+          {isMobile && <MonthPager month={month} setMonth={setMonth} year={year} min={+today.slice(5, 7) - 1} />}
+          <div className={`months compact ${isMobile ? 'single' : ''}`}>
+            {MONTHS.map((name, mi) => (isMobile && mi !== month) ? null : (
               <div key={name} className="month">
                 <div className="month-name">{name}</div>
                 <div className="month-grid">
@@ -54,7 +59,7 @@ export default function Reminders() {
                   {monthGrid(year, mi).map((d, i) => d ? (
                     <button key={d} disabled={d <= today}
                       className={`day rday ${d === today ? 'today' : ''} ${byDate[d] ? 'has' : ''} ${selected === d ? 'sel' : ''}`}
-                      onClick={() => setSelected(d)} title={byDate[d] ? byDate[d].map(r => r.text).join(' • ') : d}>
+                      onClick={() => { setSelected(d); if (isMobile) setTimeout(() => document.getElementById('reminder-form')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50); }} title={byDate[d] ? byDate[d].map(r => r.text).join(' • ') : d}>
                       {+d.slice(8)}
                     </button>
                   ) : <span key={`e${i}`} />)}
@@ -65,7 +70,7 @@ export default function Reminders() {
         </div>
 
         <div className="stack">
-          <div className="card">
+          <div className="card" id="reminder-form">
             {selected ? (
               <>
                 <h3>{fmtDateLong(selected)}</h3>

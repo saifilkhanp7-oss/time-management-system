@@ -7,15 +7,35 @@ const db = new Database(process.env.DB_PATH || path.join(__dirname, 'data.sqlite
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 
+/* ---- upgrade databases created by the older mobile-number version ----
+   users: add email, allow the same name twice, make mobile optional (all tracked data is kept)
+   otps: short-lived codes, safe to drop */
+const hasTable = name => !!db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?").get(name);
+const columns = table => db.prepare(`PRAGMA table_info(${table})`).all().map(c => c.name);
+if (hasTable('users') && !columns('users').includes('email')) {
+  db.pragma('foreign_keys = OFF');
+  db.transaction(() => {
+    db.exec(`CREATE TABLE users_new (
+      id INTEGER PRIMARY KEY, username TEXT NOT NULL, email TEXT UNIQUE COLLATE NOCASE, mobile TEXT, created_at INTEGER NOT NULL)`);
+    db.exec('INSERT INTO users_new(id,username,email,mobile,created_at) SELECT id,username,NULL,mobile,created_at FROM users');
+    db.exec('DROP TABLE users');
+    db.exec('ALTER TABLE users_new RENAME TO users');
+  })();
+  db.pragma('foreign_keys = ON');
+  console.log('Database upgraded for email login.');
+}
+if (hasTable('otps') && columns('otps').includes('mobile')) db.exec('DROP TABLE otps');
+
 db.exec(`
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY,
-  username TEXT NOT NULL UNIQUE COLLATE NOCASE,
-  mobile TEXT NOT NULL UNIQUE,
+  username TEXT NOT NULL,            -- the person's name, shown in the app
+  email TEXT UNIQUE COLLATE NOCASE,  -- login identity
+  mobile TEXT,                       -- only set on accounts made before email login
   created_at INTEGER NOT NULL
 );
 CREATE TABLE IF NOT EXISTS otps (
-  mobile TEXT PRIMARY KEY,
+  dest TEXT PRIMARY KEY,             -- email address the code was sent to
   code_hash TEXT NOT NULL,
   purpose TEXT NOT NULL,
   username TEXT,

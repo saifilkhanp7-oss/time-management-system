@@ -37,7 +37,7 @@ export default function Home() {
       <section className="hero">
         <div>
           <p className="eyebrow">{fmtDateLong(today)}</p>
-          <h1>{greeting()}, {user.username}.</h1>
+          <h1>{greeting()}, {user.username.split(' ')[0]}.</h1>
           <p className="lead">
             Chronos is your personal time lab. Track where your hours go across study, work, sleep, gym and anything else you care about.
             Set a daily goal for each category and keep your streaks alive, run focus timers that log themselves, plan the day,

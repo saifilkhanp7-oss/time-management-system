@@ -24,3 +24,15 @@ export const LogoMark = ({ size = 28 }) => (
     <path d="M50 22v30l18 12" stroke="#fff" strokeWidth="9" fill="none" strokeLinecap="round" />
   </svg>
 );
+
+const TAB_PATHS = {
+  home: <path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z" />,
+  tracker: <><path d="M4 20V10M10 20V4M16 20v-7M22 20H2" /></>,
+  timer: <><circle cx="12" cy="13" r="8" /><path d="M12 9v4l2.5 2.5M9 2h6" /></>,
+  planner: <><rect x="4" y="4" width="16" height="17" rx="2" /><path d="m8.5 12.5 2.5 2.5 4.5-5M9 2v4M15 2v4" /></>,
+  more: <><circle cx="5" cy="12" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="19" cy="12" r="1.6" /></>,
+  reminders: <><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0" /></>,
+  clock: <><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" /></>,
+  analyst: <><path d="M12 3v3M12 18v3M3 12h3M18 12h3M6 6l2 2M16 16l2 2M6 18l2-2M16 8l2-2" /><circle cx="12" cy="12" r="3" /></>,
+};
+export const TabIcon = ({ name }) => <svg {...S} width={22} height={22}>{TAB_PATHS[name]}</svg>;
