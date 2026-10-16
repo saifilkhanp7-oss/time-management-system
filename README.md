@@ -64,50 +64,6 @@ Set in `server/.env`: a long random `JWT_SECRET`, Twilio credentials (`TWILIO_AC
 `TWILIO_AUTH_TOKEN`, and `TWILIO_FROM` or `TWILIO_MESSAGING_SERVICE_SID`), and `ANTHROPIC_API_KEY`
 (model via `ANTHROPIC_MODEL`). The database is the file `server/data.sqlite` (change with `DB_PATH`).
 
-## Publish it online
-
-The repo includes a `Dockerfile`. Any host that can run a Docker container **and give it a persistent
-disk** works (Railway, Render with a disk, Fly.io, a VPS). The disk matters: the database is a SQLite
-file, and without a persistent disk all accounts and data are wiped every time the server restarts.
-
-**Railway (recommended, simplest):**
-1. Push this folder to a GitHub repository.
-2. On railway.app: *New Project → Deploy from GitHub repo* → pick the repo. It finds the `Dockerfile` automatically.
-3. In the service: *Settings → Volumes → Add volume*, mount path **`/data`**.
-4. *Variables* → add the environment variables below.
-5. *Settings → Networking → Generate Domain* → your app is live at that URL.
-
-**Environment variables for production**
-
-| Variable | Required | Value |
-|---|---|---|
-| `JWT_SECRET` | yes | long random string (24+ chars). The server refuses to start without it. |
-| `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM` | for real SMS | from your Twilio console |
-| `OTP_DEMO_MODE` | optional | `true` shows the OTP on screen when no SMS provider is set. **Anyone can then log in to any account** — only for a demo. |
-| `ANTHROPIC_API_KEY` | optional | turns on Claude for the AI analyst |
-
-Safety built in for public use: OTP requests are limited to 6 per IP per hour (so nobody can run up your
-SMS bill), plus 5 tries per code and a 30 s resend gap. Health check: `GET /api/health`.
-
-## Project layout
-
-```
-server/
-  index.js        Express app, serves client/dist in production
-  auth.js         OTP request/verify, JWT auth middleware
-  sms.js          Twilio sender (console fallback)
-  db.js           SQLite schema, default categories + India clock per new user
-  api.js          categories, sessions (overlap rules), live tracking, stats, goals, reminders, clocks, import/export, analytics routes
-  stats.js        daily totals per category, streaks
-  analytics.js    analytics engine (feature computation)
-  ai.js           Claude interpretation + rule-based fallback
-  time.js         timezone-aware day/hour helpers (uses the browser's time zone)
-client/src/
-  AppContext.jsx  auth, theme, toasts/confirm dialog, live tracking + timer state machine (sync, ring, snooze)
-  pages/          Auth, Home, Tracker, Timer, Planner, Reminders, WorldClock, Analyst
-  components/     WeekChart, YearCalendar, DayPie, icons, theme toggle
-  lib/            api client, time helpers, alarm tunes, country → time zone list
-```
 
 ## Notes
 
