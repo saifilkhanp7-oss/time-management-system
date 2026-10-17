@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useApp } from '../AppContext.jsx';
 import { api } from '../lib/api.js';
 import { addDays, atTime, fmtClock, fmtDateLong, fmtMin, fmtTime, todayStr } from '../lib/time.js';
@@ -185,45 +185,6 @@ function SessionList({ date, version, onChanged }) {
   );
 }
 
-function ImportExport() {
-  const { toast, confirm, refreshCategories, bump } = useApp();
-  const fileRef = useRef(null);
-  async function doExport() {
-    try {
-      const data = await api('/export');
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = `chronos-export-${todayStr()}.json`;
-      a.click();
-      URL.revokeObjectURL(a.href);
-      toast(`Exported ${data.sessions.length} sessions.`, 'success');
-    } catch (e) { toast(e.message, 'error'); }
-  }
-  async function onFile(e) {
-    const file = e.target.files?.[0];
-    e.target.value = '';
-    if (!file) return;
-    let data;
-    try { data = JSON.parse(await file.text()); } catch { return toast('That file is not valid JSON.', 'error'); }
-    if (data?.app !== 'chronos') return toast('This does not look like a Chronos export file.', 'error');
-    const ok = await confirm('Import this file?', { detail: `${data.categories?.length || 0} categories, ${data.sessions?.length || 0} sessions, ${data.goals?.length || 0} goals, ${data.reminders?.length || 0} reminders. Existing data is kept; overlapping sessions are skipped.`, confirmText: 'Import' });
-    if (!ok) return;
-    try {
-      const { report } = await api('/import', { method: 'POST', body: data });
-      await refreshCategories(); bump();
-      toast(`Imported ${report.sessions} sessions, ${report.categories} categories, ${report.goals} goals${report.sessionsSkipped ? ` (${report.sessionsSkipped} sessions skipped)` : ''}.`, 'success');
-    } catch (err) { toast(err.message, 'error'); }
-  }
-  return (
-    <div className="io-buttons">
-      <button className="btn ghost" onClick={() => fileRef.current?.click()}>⬆ Import JSON</button>
-      <button className="btn ghost" onClick={doExport}>⬇ Export JSON</button>
-      <input ref={fileRef} type="file" accept="application/json,.json" hidden onChange={onFile} />
-    </div>
-  );
-}
-
 export default function Tracker() {
   const { categories, dataVersion, bump, refreshCategories } = useApp();
   const [q, setQ] = useState('');
@@ -238,7 +199,6 @@ export default function Tracker() {
           <h1>Time Tracker</h1>
           <p className="muted">Track your day by category. Meet a category's daily goal to grow its streak.</p>
         </div>
-        <ImportExport />
       </div>
 
       <div className="search">
